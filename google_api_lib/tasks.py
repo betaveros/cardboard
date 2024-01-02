@@ -26,6 +26,7 @@ from .utils import GoogleApiClientTask, enabled
 
 logger = logging.getLogger(__name__)
 
+
 # helper function that can be mocked for testing
 def create_google_sheets_helper(self, name, template_file_id) -> dict:
     req_body = {"name": name}
@@ -86,9 +87,11 @@ def move_drive_file(self, file_id, destination_folder_id) -> None:
 @shared_task(base=GoogleApiClientTask, bind=True)
 def transfer_ownership(self, file, template_file_id) -> None:
     new_owner = self.sheets_owner(template_file_id)
+    file_id = file["id"]
+    logging.debug(f"Transferring ownership of file {file_id} to {new_owner}")
     permission = next(p for p in file["permissions"] if p["emailAddress"] == new_owner)
     self.drive_service().permissions().update(
-        fileId=file["id"],
+        fileId=file_id,
         permissionId=permission["id"],
         body={"role": "writer", "pendingOwner": "true"},
     ).execute()
@@ -340,7 +343,7 @@ def _update_meta_sheet_feeders(self, puzzle_id) -> None:
         {},
     ] + feeder_table
 
-    for (feeder_name, grandfeeder_table) in grandfeeder_tables.items():
+    for feeder_name, grandfeeder_table in grandfeeder_tables.items():
         rows.append({})
         rows.append(
             {
